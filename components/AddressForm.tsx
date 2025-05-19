@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { X, Search, ChevronDown } from "lucide-react"
 
 interface AddressFormProps {
-  initialAddress?: {
+  initialAddress: {
     firstName: string
     lastName: string
     email: string
@@ -30,19 +30,8 @@ interface AddressFormProps {
 }
 
 export function AddressForm({ initialAddress, onSave, onCancel }: AddressFormProps) {
-  const defaultAddress = {
-    firstName: "John",
-    lastName: "Doe",
-    email: "Johndoe@gmail.com",
-    phone: "6 12345678",
-    address: "Lou Jansenplein 18, 3",
-    city: "Amsterdam",
-    postalCode: "1063 GX",
-    country: "The Netherlands",
-  }
-
-  const [address, setAddress] = useState(initialAddress || defaultAddress)
-  const [originalAddress] = useState(initialAddress || defaultAddress)
+  const [address, setAddress] = useState(initialAddress)
+  const [originalAddress] = useState(initialAddress)
   const [addressQuery, setAddressQuery] = useState(address.address)
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(true)
   const [formChanged, setFormChanged] = useState(false)
@@ -96,26 +85,15 @@ export function AddressForm({ initialAddress, onSave, onCancel }: AddressFormPro
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      <div className="flex justify-end p-4">
+      <div className="flex justify-between items-center p-4 border-b border-gray-200">
+        <h2 className="text-lg font-medium">Edit Address</h2>
         <button onClick={onCancel} className="p-2">
           <X size={24} />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-20">
-        <h2 className="text-lg font-medium mb-6">Saved Information</h2>
-
-        <div className="mb-6">
-          <label className="block text-sm text-gray-500 mb-2">Saved Address</label>
-          <div className="relative">
-            <button className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-md">
-              <span>New Address</span>
-              <ChevronDown size={20} />
-            </button>
-          </div>
-        </div>
-
-        <h2 className="text-lg font-medium mb-6">Contact</h2>
+        <h2 className="text-lg font-medium mb-6 mt-6">Contact</h2>
 
         <div className="mb-4">
           <label htmlFor="firstName" className="block text-sm text-gray-500 mb-2">

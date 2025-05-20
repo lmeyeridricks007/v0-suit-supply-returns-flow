@@ -1,5 +1,8 @@
 "use server"
 
+import { getToken, isTokenValid } from "@/lib/reboundTokenStore"
+import { fetchReboundToken } from "./fetchReboundToken"
+
 export interface ReboundApiResponse {
   content: Array<{
     id: string
@@ -72,6 +75,7 @@ export async function fetchReboundData(
     countryCode: string
   },
   useSampleData = false,
+  countryCode = "ES", // Default country code
 ): Promise<{
   data: ReboundApiResponse | null
   error: string | null
@@ -79,11 +83,23 @@ export async function fetchReboundData(
   rawRequest: string
 }> {
   try {
-    // Using the simplified URL as specified
-    const url = "https://pre-consumer-api.cycleon.net/api/postal-services/search?clientRefString=Suitsupply&country=GB"
+    // Use the provided countryCode parameter
+    const url = `https://pre-consumer-api.cycleon.net/api/postal-services/search?clientRefString=Suitsupply&country=${countryCode}`
 
-    const token =
-      "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJrVnFTSGpBZjlLUGgtZC1RUHhRWkV3VlJCbDR2aGtXYXVZME9aNG5NdThvIn0.eyJleHAiOjE3NDc2NjMwNTksImlhdCI6MTc0NzY2MTI1OSwianRpIjoiODRmZjk1YWQtOGFmZC00ZWJlLWI2MTQtODY3YTJlMDJhMWU3IiwiaXNzIjoiaHR0cHM6Ly9wcmVzc28uY3ljbGVvbi5uZXQvYXV0aC9yZWFsbXMvbWFzdGVyIiwiYXVkIjoiY29uc3VtZXItcG9ydGFsLWFwaSIsInN1YiI6IjM0MjgxNzIzLWI4YWQtNDRjMy04YjgxLTI4NTg0YWFhZDVjMCIsInR5cCI6IkJlYXJlciIsImF6cCI6ImNvbnN1bWVyLXBvcnRhbC1hcGktU3VpdHN1cHBseS10ZXN0IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIvKiJdLCJyZXNvdXJjZV9hY2Nlc3MiOnsiY29uc3VtZXItcG9ydGFsLWFwaSI6eyJyb2xlcyI6WyJjbGllbnQtcG9ydGFsIl19fSwic2NvcGUiOiJlbWFpbCBzdWJqZWN0IHByb2ZpbGUiLCJjbGllbnRIb3N0IjoiMTAuMTA0LjE2Mi4xNjUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInVzZXJfbmFtZSI6InNlcnZpY2UtYWNjb3VudC1jb25zdW1lci1wb3J0YWwtYXBpLXN1aXRzdXBwbHktdGVzdCIsInByZWZlcnJlZF91c2VybmFtZSI6InNlcnZpY2UtYWNjb3VudC1jb25zdW1lci1wb3J0YWwtYXBpLXN1aXRzdXBwbHktdGVzdCIsImNsaWVudEFkZHJlc3MiOiIxMC4xMDQuMTYyLjE2NSIsImNsaWVudF9pZCI6ImNvbnN1bWVyLXBvcnRhbC1hcGktU3VpdHN1cHBseS10ZXN0In0.NLPf914zrn-zanADrx7-O8G1YW0DEPS36V7jZLOlWJrrs-LWhZuq4AnS0_jlr7g8kF5uE2kdn_bx45MYFeuuhl55joLcUJKXB2WYTbePLGxJCVkiw955aLpatBWwdGpzYEWcAPK6Sj0XHTb-QnUyC9lzKiT3OLsRo7JQ9RV5qZK1_pLBa5ZBBST2qheKxOLO4mlmOGlUE149o7v3hwxJY1tZSPOXQ6mF-uOHOvff6X6VFxfHv5ljB9dkpdPWIarQA8H1czp8c0nOdc4fHZ2Vh9N9Pju_OEDxkSehQQnmBoOsEvQMvy9bS3TT_uDGNg3d1KwgGwIdqrJTUYMT2OIRCA"
+    // Check if we have a valid token, if not, fetch a new one
+    let token = await getToken()
+    if (!token || !(await isTokenValid())) {
+      const tokenResponse = await fetchReboundToken()
+      if (tokenResponse.error || !tokenResponse.token) {
+        return {
+          data: null,
+          error: `Failed to get valid token: ${tokenResponse.error || "Unknown error"}`,
+          rawResponse: tokenResponse.rawResponse,
+          rawRequest: tokenResponse.rawRequest,
+        }
+      }
+      token = tokenResponse.token
+    }
 
     // This is the raw request that would be made - showing the exact URL format
     const rawRequest = `curl -X GET "${url}" -H "Authorization: Bearer ${token}" -H "accept: application/json"`
@@ -92,13 +108,13 @@ export async function fetchReboundData(
 
     // For debugging, let's use a sample response if requested
     if (useSampleData) {
-      // Sample response based on the API documentation
+      // Sample response based on the API documentation, updated for the provided country code
       const sampleResponse = {
         content: [
           {
             id: "5831",
             postalCompanyId: 6,
-            displayName: "GB Royal Mail Paperless Pick Up RK",
+            displayName: `${countryCode} Correos Paperless Pick Up`,
             description: null,
             ecoScore: null,
             logo: null,
@@ -106,8 +122,8 @@ export async function fetchReboundData(
             paperless: false,
             available: true,
             price: {
-              amount: 0,
-              currency: "GBP",
+              amount: 5.99,
+              currency: "EUR",
             },
             dropOffLocations: [],
             mandatoryFields: ["NAME", "POSTAL_CODE", "CITY", "EMAIL", "STREET_ADDRESS"],
@@ -130,8 +146,8 @@ export async function fetchReboundData(
           {
             id: "5832",
             postalCompanyId: 7,
-            displayName: "GB Royal Mail Drop Off",
-            description: "Drop off your return at a Royal Mail location",
+            displayName: `${countryCode} Correos Drop Off`,
+            description: `Drop off your return at a Correos location in ${countryCode}`,
             ecoScore: "B",
             logo: null,
             type: "DROP_OFF",
@@ -139,17 +155,17 @@ export async function fetchReboundData(
             available: true,
             price: {
               amount: 0,
-              currency: "GBP",
+              currency: "EUR",
             },
             dropOffLocations: [
               {
                 id: "do-1",
-                name: "Royal Mail Post Office - Central London",
+                name: "Correos Office - Madrid",
                 address: {
-                  streetAddress: "25 High Street",
-                  city: "London",
-                  postalCode: "W1D 1AB",
-                  countryCode: "GB",
+                  streetAddress: "Calle Gran Vía 25",
+                  city: "Madrid",
+                  postalCode: "28013",
+                  countryCode: countryCode,
                 },
                 openingHours: "Mon-Fri: 9:00-17:30, Sat: 10:00-14:00",
                 distance: 0.8,
@@ -195,7 +211,7 @@ export async function fetchReboundData(
       }
     }
 
-    // Make the actual API call with the simplified URL
+    // Make the actual API call with the updated URL
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,

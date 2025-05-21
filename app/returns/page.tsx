@@ -839,27 +839,30 @@ export default function ReturnsPage() {
                     </div>
                   ) : (
                     <>
-                      {showMap && dropOffLocationsData && dropOffLocationsData.customerStreetGeoLocation && (
-                        <div className="mb-6">
-                          <DropOffLocationsMap
-                            customerLocation={dropOffLocationsData.customerStreetGeoLocation}
-                            dropOffLocations={allDropOffLocations.map((location) => ({
-                              name: location.name,
-                              address: location.address,
-                              geoLocation: location.geoLocation,
-                              openNow: location.openNow,
-                              weekdayDescriptions: location.weekdayDescriptions,
-                            }))}
-                            height="245px"
-                            zoom={16}
-                            focusedLocationId={focusedLocationId}
-                            onLocationSelected={handleMapLocationSelected}
-                          />
-                          <p className="text-xs text-gray-500 mt-2 text-center">
-                            Blue pin: Your location | Red pins: Drop-off points
-                          </p>
-                        </div>
-                      )}
+                      {showMap &&
+                        !isProcessingReturn &&
+                        dropOffLocationsData &&
+                        dropOffLocationsData.customerStreetGeoLocation && (
+                          <div className="mb-6">
+                            <DropOffLocationsMap
+                              customerLocation={dropOffLocationsData.customerStreetGeoLocation}
+                              dropOffLocations={allDropOffLocations.map((location) => ({
+                                name: location.name,
+                                address: location.address,
+                                geoLocation: location.geoLocation,
+                                openNow: location.openNow,
+                                weekdayDescriptions: location.weekdayDescriptions,
+                              }))}
+                              height="245px"
+                              zoom={16}
+                              focusedLocationId={focusedLocationId}
+                              onLocationSelected={handleMapLocationSelected}
+                            />
+                            <p className="text-xs text-gray-500 mt-2 text-center">
+                              Blue pin: Your location | Red pins: Drop-off points
+                            </p>
+                          </div>
+                        )}
 
                       <div className="border border-gray-200 rounded-md mb-6 overflow-hidden">
                         <div className="max-h-[400px] overflow-y-auto">

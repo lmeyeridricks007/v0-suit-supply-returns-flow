@@ -54,8 +54,11 @@
   0% {
     width: 0%;
   }
-  50% {
-    width: 70%;
+  40% {
+    width: 60%;
+  }
+  80% {
+    width: 85%;
   }
   100% {
     width: 100%;
@@ -63,5 +66,10 @@
 }
 
 .animate-progress {
-  animation: progress 2s ease-in-out forwards;
+  animation: progress 2.5s ease-in-out forwards;
+}
+
+/* Add this to the end of the file */
+.fixed {
+  isolation: isolate;
 }

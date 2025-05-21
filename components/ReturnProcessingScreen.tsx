@@ -2,7 +2,7 @@ import { Loader2 } from "lucide-react"
 
 export function ReturnProcessingScreen() {
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+    <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center">
       <div className="w-full max-w-md px-4 text-center">
         <div className="mb-8">
           <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">

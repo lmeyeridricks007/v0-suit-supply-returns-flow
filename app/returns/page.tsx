@@ -6,7 +6,7 @@ import { Topbar } from "@/components/Topbar"
 import { BackButton } from "@/components/BackButton"
 import { StepIndicator } from "@/components/StepIndicator"
 import { SummaryItem } from "@/components/SummaryItem"
-import { RotateCcw, Truck, MapPin, Info, Loader2, Calendar, AlertCircle, Map, ShoppingBag, XCircle } from "lucide-react"
+import { Truck, MapPin, Info, Loader2, Calendar, AlertCircle, Map, ShoppingBag, XCircle } from "lucide-react"
 import { ReturnReasonDropdown } from "@/components/ReturnReasonDropdown"
 import Link from "next/link"
 import { SimpleQuantitySelector } from "@/components/SimpleQuantitySelector"
@@ -21,6 +21,7 @@ import { fetchDropOffLocations, type DropOffLocationsResponse } from "@/app/acti
 import { DropOffLocationsMap } from "@/components/DropOffLocationsMap"
 import { createReturn, type CreateReturnRequest } from "@/app/actions/createReturn"
 import { ReturnProcessingScreen } from "@/components/ReturnProcessingScreen"
+import { Container } from "@/components/Container"
 
 const returnReasons = [
   "I've changed my mind",
@@ -42,7 +43,6 @@ const getNextDayDate = (): string => {
   })
 }
 
-type ReturnAction = "none" | "return"
 type ReturnMethod = "pickup" | "dropoff" | null
 
 const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -86,8 +86,8 @@ export default function ReturnsPage() {
 
   const [productStates, setProductStates] = useState<
     {
+      selected: boolean
       selectedReason: string
-      returnAction: ReturnAction
       returnQuantity: number
     }[]
   >([])
@@ -151,8 +151,8 @@ export default function ReturnsPage() {
       if (data && data.orderItems) {
         setProductStates(
           data.orderItems.map(() => ({
+            selected: false,
             selectedReason: "",
-            returnAction: "none" as ReturnAction,
             returnQuantity: 1,
           })),
         )
@@ -213,7 +213,7 @@ export default function ReturnsPage() {
   }, [fetchDropOffPoints])
 
   const refundAmount = productStates.reduce((total, state, index) => {
-    if (state.returnAction === "return" && orderDetails?.orderItems?.[index]) {
+    if (state.selected && state.selectedReason && orderDetails?.orderItems?.[index]) {
       return (
         total + (orderDetails.orderItems[index].total * state.returnQuantity) / orderDetails.orderItems[index].quantity
       )
@@ -221,13 +221,13 @@ export default function ReturnsPage() {
     return total
   }, 0)
 
-  const isAnyProductSelected = productStates.some((state) => state.returnAction !== "none")
+  const isAnyProductSelected = productStates.some((state) => state.selected && state.selectedReason)
 
   const returnedItems = useMemo(() => {
     if (!orderDetails?.orderItems) return []
 
     return orderDetails.orderItems
-      .filter((_, index) => productStates[index]?.returnAction === "return")
+      .filter((_, index) => productStates[index]?.selected && productStates[index]?.selectedReason)
       .map((item, index) => {
         const stateIndex = orderDetails.orderItems.findIndex((orderItem) => orderItem === item)
         return {
@@ -252,19 +252,6 @@ export default function ReturnsPage() {
 
   const selectReason = (index: number, reason: string) => {
     setProductStates((prev) => prev.map((state, i) => (i === index ? { ...state, selectedReason: reason } : state)))
-  }
-
-  const handleReturnClick = (index: number) => {
-    setProductStates((prev) =>
-      prev.map((state, i) =>
-        i === index
-          ? {
-              ...state,
-              returnAction: state.returnAction === "return" ? "none" : "return",
-            }
-          : state,
-      ),
-    )
   }
 
   const handleQuantityChange = (index: number, increment: boolean) => {
@@ -494,27 +481,34 @@ export default function ReturnsPage() {
     handleLocationSelect(locationId)
   }
 
+  const handleItemSelect = (index: number) => {
+    setProductStates((prev) => prev.map((state, i) => (i === index ? { ...state, selected: !state.selected } : state)))
+  }
+
   if (orderNotFound && !loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
         <Topbar />
-        <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
+        <Container>
+          <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
-          <div className="bg-gray-100 rounded-full p-6 mb-6">
-            <ShoppingBag size={48} className="text-gray-400" />
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+            <div className="bg-gray-100 rounded-full p-6 mb-6">
+              <ShoppingBag size={48} className="text-gray-400" />
+            </div>
+            <h1 className="text-2xl font-medium mb-4 text-center">Order Not Found</h1>
+            <p className="text-gray-600 text-center mb-8">
+              We couldn't find the order you're looking for. The order may have been removed or the ID might be
+              incorrect.
+            </p>
+            <Link
+              href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`}
+              className="px-6 py-3 bg-gray-900 text-white rounded-md"
+            >
+              Return to Orders
+            </Link>
           </div>
-          <h1 className="text-2xl font-medium mb-4 text-center">Order Not Found</h1>
-          <p className="text-gray-600 text-center mb-8">
-            We couldn't find the order you're looking for. The order may have been removed or the ID might be incorrect.
-          </p>
-          <Link
-            href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`}
-            className="px-6 py-3 bg-gray-900 text-white rounded-md"
-          >
-            Return to Orders
-          </Link>
-        </div>
+        </Container>
       </div>
     )
   }
@@ -524,414 +518,419 @@ export default function ReturnsPage() {
       {isProcessingReturn && <ReturnProcessingScreen />}
 
       <Topbar />
-      <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
 
-      <div className="px-4 py-8 text-center">
-        <h1 className="text-2xl font-medium mb-2">Return products</h1>
-        <p className="text-gray-600 text-sm">Request a refund for your returned product.</p>
-        {orderDetails && (
-          <p className="text-gray-600 text-sm mt-2">
-            Order #{orderDetails.orderId} - {formatDate(orderDetails.orderDate)}
-          </p>
-        )}
-      </div>
+      <Container>
+        <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
 
-      <div className="flex-grow flex flex-col">
-        <div className="border-t border-gray-200">
-          <div className="flex justify-between items-center">
-            <StepIndicator number={1} isActive={currentStep === 1}>
-              Select items to return
-            </StepIndicator>
-            {currentStep === 2 && (
-              <button onClick={() => setCurrentStep(1)} className="pr-4 text-sm text-gray-700 underline">
-                Edit
-              </button>
-            )}
-          </div>
+        <div className="py-8 text-center">
+          <h1 className="text-2xl font-medium mb-2">Return products</h1>
+          <p className="text-gray-600 text-sm">Request a refund for your returned product.</p>
+          {orderDetails && (
+            <p className="text-gray-600 text-sm mt-2">
+              Order #{orderDetails.orderId} - {formatDate(orderDetails.orderDate)}
+            </p>
+          )}
         </div>
 
-        {currentStep === 1 && (
-          <div className="bg-white px-4 py-6">
-            {loading ? (
-              <div className="flex justify-center items-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              </div>
-            ) : error ? (
-              <div className="border border-red-200 rounded-md p-4 bg-red-50">
-                <h3 className="font-medium text-red-700 mb-2">Error loading order details</h3>
-                <p className="text-red-600">{error}</p>
-              </div>
-            ) : orderDetails && orderDetails.orderItems ? (
-              orderDetails.orderItems.map((item, index) => (
-                <div key={index} className="mb-4">
-                  <div className="border border-gray-200 rounded-md overflow-hidden">
-                    <div className="p-4">
-                      <div className="flex gap-4">
-                        <div className="w-[132px] h-[132px] bg-gray-100 flex-shrink-0">
-                          {item.productDetails?.imageUrl ? (
-                            <img
-                              src={item.productDetails.imageUrl || "/placeholder.svg"}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
-                              No image
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col justify-between flex-grow">
-                          <div>
-                            <h3 className="text-base font-medium">{item.name}</h3>
-                            <div className="text-sm text-gray-600 mt-4">
-                              <p>Qty. {item.quantity}</p>
-                              <p>Size {item.productDetails?.displaySize || "N/A"}</p>
-                            </div>
+        <div className="flex-grow flex flex-col">
+          <div className="border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <StepIndicator number={1} isActive={currentStep === 1}>
+                Select items to return
+              </StepIndicator>
+              {currentStep === 2 && (
+                <button onClick={() => setCurrentStep(1)} className="pr-4 text-sm text-gray-700 underline">
+                  Edit
+                </button>
+              )}
+            </div>
+          </div>
+
+          {currentStep === 1 && (
+            <div className="bg-white py-6">
+              {loading ? (
+                <div className="flex justify-center items-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                </div>
+              ) : error ? (
+                <div className="border border-red-200 rounded-md p-4 bg-red-50">
+                  <h3 className="font-medium text-red-700 mb-2">Error loading order details</h3>
+                  <p className="text-red-600">{error}</p>
+                </div>
+              ) : orderDetails && orderDetails.orderItems ? (
+                orderDetails.orderItems.map((item, index) => (
+                  <div key={index} className="mb-4">
+                    <div className="border border-gray-200 rounded-md overflow-hidden">
+                      <div className="p-4">
+                        <div className="flex gap-4">
+                          <div className="w-[132px] h-[132px] bg-gray-100 flex-shrink-0">
+                            {item.productDetails?.imageUrl ? (
+                              <img
+                                src={item.productDetails.imageUrl || "/placeholder.svg"}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
+                                No image
+                              </div>
+                            )}
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium">
-                              {orderDetails.currencySign || "€"}
-                              {item.total}
-                            </p>
+                          <div className="flex flex-col justify-between flex-grow">
+                            <div>
+                              <h3 className="text-base font-medium">{item.name}</h3>
+                              <div className="text-sm text-gray-600 mt-4">
+                                <p>Qty. {item.quantity}</p>
+                                <p>Size {item.productDetails?.displaySize || "N/A"}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">
+                                {orderDetails.currencySign || "€"}
+                                {item.total}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="px-4 pb-4">
-                      {item.canReturn !== false ? (
-                        <div className="relative">
-                          <ReturnReasonDropdown
-                            selectedReason={productStates[index]?.selectedReason || ""}
-                            onSelect={(reason) => selectReason(index, reason)}
-                            reasons={returnReasons}
-                          />
-
-                          {productStates[index]?.selectedReason && (
-                            <div className="mt-4">
-                              <div className="flex gap-2">
-                                <button
-                                  className={`w-full py-3 border rounded flex items-center justify-center gap-2 ${
-                                    productStates[index]?.returnAction === "return"
-                                      ? "bg-gray-100 border-gray-400"
-                                      : "border-gray-200"
-                                  }`}
-                                  onClick={() => handleReturnClick(index)}
-                                >
-                                  <RotateCcw size={16} />
-                                  <span>Return</span>
-                                </button>
-
-                                {item.quantity > 1 && productStates[index]?.returnAction === "return" && (
-                                  <SimpleQuantitySelector
-                                    quantity={productStates[index]?.returnQuantity || 1}
-                                    onDecrement={() => handleQuantityChange(index, false)}
-                                    onIncrement={() => handleQuantityChange(index, true)}
-                                    maxQuantity={item.quantity}
-                                  />
-                                )}
-                              </div>
+                      <div className="px-4 pb-4">
+                        {item.canReturn !== false ? (
+                          <div className="relative">
+                            <div className="flex items-center mb-4">
+                              <input
+                                type="checkbox"
+                                id={`select-item-${index}`}
+                                checked={productStates[index]?.selected || false}
+                                onChange={() => handleItemSelect(index)}
+                                className="h-5 w-5 rounded border-gray-300 text-gray-900 focus:ring-gray-500"
+                              />
+                              <label htmlFor={`select-item-${index}`} className="ml-2 text-sm text-gray-700">
+                                Select this item for return
+                              </label>
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded border border-gray-200">
-                          <div className="flex items-center text-gray-500">
-                            <XCircle size={16} className="mr-2" />
-                            <span>This item cannot be returned</span>
+
+                            {productStates[index]?.selected && (
+                              <>
+                                <ReturnReasonDropdown
+                                  selectedReason={productStates[index]?.selectedReason || ""}
+                                  onSelect={(reason) => selectReason(index, reason)}
+                                  reasons={returnReasons}
+                                />
+
+                                {productStates[index]?.selectedReason && item.quantity > 1 && (
+                                  <div className="mt-4 flex items-center">
+                                    <span className="text-sm text-gray-700 mr-4">Quantity to return:</span>
+                                    <SimpleQuantitySelector
+                                      quantity={productStates[index]?.returnQuantity || 1}
+                                      onDecrement={() => handleQuantityChange(index, false)}
+                                      onIncrement={() => handleQuantityChange(index, true)}
+                                      maxQuantity={item.quantity}
+                                    />
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-3 bg-gray-100 rounded border border-gray-200">
+                            <div className="flex items-center text-gray-500">
+                              <XCircle size={16} className="mr-2" />
+                              <span>This item cannot be returned</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="border border-gray-200 rounded-md p-4">
+                  <p className="text-gray-500">No items found in this order</p>
+                </div>
+              )}
+
+              {!loading && !error && orderDetails && (
+                <>
+                  <div className="py-2">
+                    <SummaryItem label="Delivery cost" value={getDeliveryCost()} />
+                    <SummaryItem
+                      label={
+                        <div className="flex items-center">
+                          Refund amount <span className="text-xs text-gray-500 ml-1">Incl. vat</span>
                         </div>
+                      }
+                      value={`${orderDetails.currencySign || "€"}${refundAmount.toFixed(2)}`}
+                      isTotal={true}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      className={`w-full py-3 rounded ${
+                        isAnyProductSelected ? "bg-gray-900 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      }`}
+                      disabled={!isAnyProductSelected}
+                      onClick={handleContinueClick}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="border-t border-gray-200">
+            <StepIndicator number={2} isActive={currentStep === 2}>
+              Choose a return method
+            </StepIndicator>
+          </div>
+
+          {currentStep === 2 && (
+            <div className="bg-white py-6">
+              <h3 className="font-medium mb-4">Return options</h3>
+
+              {reboundLoading ? (
+                <div className="flex justify-center items-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                </div>
+              ) : reboundError ? (
+                <div className="border border-red-200 rounded-md p-4 bg-red-50 mb-4">
+                  <div className="flex items-center text-red-700 mb-2">
+                    <AlertCircle size={20} className="mr-2" />
+                    <h3 className="font-medium">Error loading return options</h3>
+                  </div>
+                  <p className="text-red-600">{reboundError}</p>
+                </div>
+              ) : (
+                <>
+                  {hasPickupOption && (
+                    <ReturnMethodOption
+                      icon={<Truck size={24} />}
+                      title="Pick up"
+                      description="Schedule a pickup"
+                      selected={returnMethod === "pickup"}
+                      onClick={() => setReturnMethod("pickup")}
+                    />
+                  )}
+
+                  {hasDropoffOption && (
+                    <ReturnMethodOption
+                      icon={<MapPin size={24} />}
+                      title="Drop-off point"
+                      description="Easy return near you"
+                      selected={returnMethod === "dropoff"}
+                      onClick={() => setReturnMethod("dropoff")}
+                    />
+                  )}
+
+                  {!hasPickupOption && !hasDropoffOption && (
+                    <div className="border border-gray-200 rounded-md p-4 text-center text-gray-500 mb-4">
+                      No return options available for your location
+                    </div>
+                  )}
+                </>
+              )}
+
+              <button className="text-sm text-gray-700 underline mb-6">Contact customer service</button>
+
+              {returnMethod === "pickup" && (
+                <>
+                  <div className="flex items-center mb-2">
+                    <h3 className="font-medium">Address</h3>
+                    <Info size={16} className="ml-2 text-gray-500" />
+                  </div>
+
+                  <AddressCard
+                    name={getFormattedAddress().name}
+                    address1={getFormattedAddress().address1}
+                    address2={getFormattedAddress().address2}
+                    country={getFormattedAddress().country}
+                    onEdit={handleEditAddress}
+                  />
+
+                  <h3 className="font-medium mb-4 mt-6">Pick up time</h3>
+
+                  <div className="border border-gray-200 rounded-md p-4 mb-4">
+                    <div className="flex items-start">
+                      <Calendar size={20} className="mr-3 text-gray-600 mt-1 flex-shrink-0" />
+                      <div className="flex-grow">
+                        <h4 className="font-medium">{getNextDayDate()}</h4>
+                        <p className="text-sm text-gray-600 mt-1">9:00 AM - 5:00 PM</p>
+                        <p className="text-sm text-gray-600 mt-1">By Correos</p>
+                        <p className="text-sm text-gray-600 mt-3">{getDeliveryCost()}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="py-2 mt-6">
+                    <SummaryItem label="Delivery cost" value={getDeliveryCost()} />
+                    <SummaryItem
+                      label={
+                        <div className="flex items-center">
+                          Refund amount <span className="text-xs text-gray-500 ml-1">Incl. vat</span>
+                        </div>
+                      }
+                      value={orderDetails ? `${orderDetails.currencySign || "€"}${refundAmount.toFixed(2)}` : `€0.00`}
+                      isTotal={true}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      className="w-full py-3 rounded bg-gray-900 text-white"
+                      onClick={handleContinueClick}
+                      disabled={isProcessingReturn}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {returnMethod === "dropoff" && (
+                <>
+                  <div className="mb-6">
+                    <h3 className="font-medium mb-4">Search for locations</h3>
+                    <div className="relative">
+                      <label htmlFor="dropoffSearch" className="block text-sm text-gray-500 mb-2">
+                        Address or postcode
+                      </label>
+                      <input
+                        type="text"
+                        id="dropoffSearch"
+                        value={dropoffSearchQuery}
+                        onChange={(e) => setDropoffSearchQuery(e.target.value)}
+                        className="w-full p-4 border border-gray-200 rounded-md"
+                      />
+                      {dropoffSearchQuery.length < 4 && (
+                        <p className="text-xs text-gray-500 mt-1">Please enter at least 4 characters</p>
                       )}
                     </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <div className="border border-gray-200 rounded-md p-4">
-                <p className="text-gray-500">No items found in this order</p>
-              </div>
-            )}
 
-            {!loading && !error && orderDetails && (
-              <>
-                <div className="px-4 py-2">
-                  <SummaryItem label="Delivery cost" value={getDeliveryCost()} />
-                  <SummaryItem
-                    label={
-                      <div className="flex items-center">
-                        Refund amount <span className="text-xs text-gray-500 ml-1">Incl. vat</span>
-                      </div>
-                    }
-                    value={`${orderDetails.currencySign || "€"}${refundAmount.toFixed(2)}`}
-                    isTotal={true}
-                  />
-                </div>
-
-                <div className="px-4 mt-4">
-                  <button
-                    className={`w-full py-3 rounded ${
-                      isAnyProductSelected ? "bg-gray-900 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    }`}
-                    disabled={!isAnyProductSelected}
-                    onClick={handleContinueClick}
-                  >
-                    Continue
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        <div className="border-t border-gray-200">
-          <StepIndicator number={2} isActive={currentStep === 2}>
-            Choose a return method
-          </StepIndicator>
-        </div>
-
-        {currentStep === 2 && (
-          <div className="bg-white px-4 py-6">
-            <h3 className="font-medium mb-4">Return options</h3>
-
-            {reboundLoading ? (
-              <div className="flex justify-center items-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              </div>
-            ) : reboundError ? (
-              <div className="border border-red-200 rounded-md p-4 bg-red-50 mb-4">
-                <div className="flex items-center text-red-700 mb-2">
-                  <AlertCircle size={20} className="mr-2" />
-                  <h3 className="font-medium">Error loading return options</h3>
-                </div>
-                <p className="text-red-600">{reboundError}</p>
-              </div>
-            ) : (
-              <>
-                {hasPickupOption && (
-                  <ReturnMethodOption
-                    icon={<Truck size={24} />}
-                    title="Pick up"
-                    description="Schedule a pickup"
-                    selected={returnMethod === "pickup"}
-                    onClick={() => setReturnMethod("pickup")}
-                  />
-                )}
-
-                {hasDropoffOption && (
-                  <ReturnMethodOption
-                    icon={<MapPin size={24} />}
-                    title="Drop-off point"
-                    description="Easy return near you"
-                    selected={returnMethod === "dropoff"}
-                    onClick={() => setReturnMethod("dropoff")}
-                  />
-                )}
-
-                {!hasPickupOption && !hasDropoffOption && (
-                  <div className="border border-gray-200 rounded-md p-4 text-center text-gray-500 mb-4">
-                    No return options available for your location
-                  </div>
-                )}
-              </>
-            )}
-
-            <button className="text-sm text-gray-700 underline mb-6">Contact customer service</button>
-
-            {returnMethod === "pickup" && (
-              <>
-                <div className="flex items-center mb-2">
-                  <h3 className="font-medium">Address</h3>
-                  <Info size={16} className="ml-2 text-gray-500" />
-                </div>
-
-                <AddressCard
-                  name={getFormattedAddress().name}
-                  address1={getFormattedAddress().address1}
-                  address2={getFormattedAddress().address2}
-                  country={getFormattedAddress().country}
-                  onEdit={handleEditAddress}
-                />
-
-                <h3 className="font-medium mb-4 mt-6">Pick up time</h3>
-
-                <div className="border border-gray-200 rounded-md p-4 mb-4">
-                  <div className="flex items-start">
-                    <Calendar size={20} className="mr-3 text-gray-600 mt-1 flex-shrink-0" />
-                    <div className="flex-grow">
-                      <h4 className="font-medium">{getNextDayDate()}</h4>
-                      <p className="text-sm text-gray-600 mt-1">9:00 AM - 5:00 PM</p>
-                      <p className="text-sm text-gray-600 mt-1">By Correos</p>
-                      <p className="text-sm text-gray-600 mt-3">{getDeliveryCost()}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="py-2 mt-6">
-                  <SummaryItem label="Delivery cost" value={getDeliveryCost()} />
-                  <SummaryItem
-                    label={
-                      <div className="flex items-center">
-                        Refund amount <span className="text-xs text-gray-500 ml-1">Incl. vat</span>
-                      </div>
-                    }
-                    value={orderDetails ? `${orderDetails.currencySign || "€"}${refundAmount.toFixed(2)}` : `€0.00`}
-                    isTotal={true}
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <button
-                    className="w-full py-3 rounded bg-gray-900 text-white"
-                    onClick={handleContinueClick}
-                    disabled={isProcessingReturn}
-                  >
-                    Continue
-                  </button>
-                </div>
-              </>
-            )}
-
-            {returnMethod === "dropoff" && (
-              <>
-                <div className="mb-6">
-                  <h3 className="font-medium mb-4">Search for locations</h3>
-                  <div className="relative">
-                    <label htmlFor="dropoffSearch" className="block text-sm text-gray-500 mb-2">
-                      Address or postcode
-                    </label>
-                    <input
-                      type="text"
-                      id="dropoffSearch"
-                      value={dropoffSearchQuery}
-                      onChange={(e) => setDropoffSearchQuery(e.target.value)}
-                      className="w-full p-4 border border-gray-200 rounded-md"
-                    />
-                    {dropoffSearchQuery.length < 4 && (
-                      <p className="text-xs text-gray-500 mt-1">Please enter at least 4 characters</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-medium">Drop-off locations</h3>
-                  <button
-                    onClick={toggleMap}
-                    className="flex items-center gap-1 px-3 py-1 bg-gray-200 rounded-md text-sm"
-                  >
-                    <Map size={16} />
-                    {showMap ? "Hide Map" : "Show Map"}
-                  </button>
-                </div>
-
-                {dropOffLocationsLoading ? (
-                  <div className="flex justify-center items-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                  </div>
-                ) : dropOffLocationsError ? (
-                  <div className="border border-red-200 rounded-md p-4 bg-red-50 mb-4">
-                    <div className="flex items-center text-red-700 mb-2">
-                      <AlertCircle size={20} className="mr-2" />
-                      <h3 className="font-medium">Error loading drop-off locations</h3>
-                    </div>
-                    <p className="text-red-600">{dropOffLocationsError}</p>
-                  </div>
-                ) : locationsWithDistances.length === 0 ? (
-                  <div className="border border-gray-200 rounded-md p-8 mb-6 text-center text-gray-500">
-                    No locations found in your area
-                  </div>
-                ) : (
-                  <>
-                    {showMap && dropOffLocationsData && dropOffLocationsData.customerStreetGeoLocation && (
-                      <div className="mb-6">
-                        <DropOffLocationsMap
-                          customerLocation={dropOffLocationsData.customerStreetGeoLocation}
-                          dropOffLocations={allDropOffLocations.map((location) => ({
-                            name: location.name,
-                            address: location.address,
-                            geoLocation: location.geoLocation,
-                            openNow: location.openNow,
-                            weekdayDescriptions: location.weekdayDescriptions,
-                          }))}
-                          height="245px"
-                          zoom={16}
-                          focusedLocationId={focusedLocationId}
-                          onLocationSelected={handleMapLocationSelected}
-                        />
-                        <p className="text-xs text-gray-500 mt-2 text-center">
-                          Blue pin: Your location | Red pins: Drop-off points
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="border border-gray-200 rounded-md mb-6 overflow-hidden">
-                      <div className="max-h-[400px] overflow-y-auto">
-                        {locationsWithDistances.map((location, index) => {
-                          const addressParts = location.address.split(" ")
-                          const city = addressParts[0] || ""
-                          const postalCode = addressParts[1] || ""
-                          const region = addressParts[2] || ""
-                          const country = addressParts[3] || ""
-
-                          return (
-                            <div
-                              key={index}
-                              className={index > 0 ? "border-t border-gray-200" : ""}
-                              id={`location-${index.toString()}`}
-                            >
-                              <DropoffLocationCard
-                                name={location.name}
-                                address1={`${city} ${postalCode}`}
-                                address2={`${region} ${country}`}
-                                distance={location.formattedDistance}
-                                selected={selectedDropoffId === index.toString()}
-                                onClick={() => handleLocationSelect(index.toString())}
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-medium">Drop-off locations</h3>
                     <button
-                      className="w-full py-3 border border-gray-200 rounded-md mb-6 text-center"
-                      onClick={() => setShowDropoffSelection(true)}
+                      onClick={toggleMap}
+                      className="flex items-center gap-1 px-3 py-1 bg-gray-200 rounded-md text-sm"
                     >
-                      Select a different location
+                      <Map size={16} />
+                      {showMap ? "Hide Map" : "Show Map"}
                     </button>
-                  </>
-                )}
+                  </div>
 
-                <div className="py-2">
-                  <SummaryItem label="Delivery cost" value={getDeliveryCost()} />
-                  <SummaryItem
-                    label={
-                      <div className="flex items-center">
-                        Refund amount <span className="text-xs text-gray-500 ml-1">Incl. vat</span>
+                  {dropOffLocationsLoading ? (
+                    <div className="flex justify-center items-center p-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                    </div>
+                  ) : dropOffLocationsError ? (
+                    <div className="border border-red-200 rounded-md p-4 bg-red-50 mb-4">
+                      <div className="flex items-center text-red-700 mb-2">
+                        <AlertCircle size={20} className="mr-2" />
+                        <h3 className="font-medium">Error loading drop-off locations</h3>
                       </div>
-                    }
-                    value={orderDetails ? `${orderDetails.currencySign || "€"}${refundAmount.toFixed(2)}` : `€0.00`}
-                    isTotal={true}
-                  />
-                </div>
+                      <p className="text-red-600">{dropOffLocationsError}</p>
+                    </div>
+                  ) : locationsWithDistances.length === 0 ? (
+                    <div className="border border-gray-200 rounded-md p-8 mb-6 text-center text-gray-500">
+                      No locations found in your area
+                    </div>
+                  ) : (
+                    <>
+                      {showMap && dropOffLocationsData && dropOffLocationsData.customerStreetGeoLocation && (
+                        <div className="mb-6">
+                          <DropOffLocationsMap
+                            customerLocation={dropOffLocationsData.customerStreetGeoLocation}
+                            dropOffLocations={allDropOffLocations.map((location) => ({
+                              name: location.name,
+                              address: location.address,
+                              geoLocation: location.geoLocation,
+                              openNow: location.openNow,
+                              weekdayDescriptions: location.weekdayDescriptions,
+                            }))}
+                            height="245px"
+                            zoom={16}
+                            focusedLocationId={focusedLocationId}
+                            onLocationSelected={handleMapLocationSelected}
+                          />
+                          <p className="text-xs text-gray-500 mt-2 text-center">
+                            Blue pin: Your location | Red pins: Drop-off points
+                          </p>
+                        </div>
+                      )}
 
-                <div className="mt-4">
-                  <button
-                    className="w-full py-3 rounded bg-gray-900 text-white"
-                    onClick={handleContinueClick}
-                    disabled={showNoLocations || isProcessingReturn}
-                  >
-                    Continue
+                      <div className="border border-gray-200 rounded-md mb-6 overflow-hidden">
+                        <div className="max-h-[400px] overflow-y-auto">
+                          {locationsWithDistances.map((location, index) => {
+                            const addressParts = location.address.split(" ")
+                            const city = addressParts[0] || ""
+                            const postalCode = addressParts[1] || ""
+                            const region = addressParts[2] || ""
+                            const country = addressParts[3] || ""
+
+                            return (
+                              <div
+                                key={index}
+                                className={index > 0 ? "border-t border-gray-200" : ""}
+                                id={`location-${index.toString()}`}
+                              >
+                                <DropoffLocationCard
+                                  name={location.name}
+                                  address1={`${city} ${postalCode}`}
+                                  address2={`${region} ${country}`}
+                                  distance={location.formattedDistance}
+                                  selected={selectedDropoffId === index.toString()}
+                                  onClick={() => handleLocationSelect(index.toString())}
+                                />
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      <button
+                        className="w-full py-3 border border-gray-200 rounded-md mb-6 text-center"
+                        onClick={() => setShowDropoffSelection(true)}
+                      >
+                        Select a different location
+                      </button>
+                    </>
+                  )}
+
+                  <div className="py-2">
+                    <SummaryItem label="Delivery cost" value={getDeliveryCost()} />
+                    <SummaryItem
+                      label={
+                        <div className="flex items-center">
+                          Refund amount <span className="text-xs text-gray-500 ml-1">Incl. vat</span>
+                        </div>
+                      }
+                      value={orderDetails ? `${orderDetails.currencySign || "€"}${refundAmount.toFixed(2)}` : `€0.00`}
+                      isTotal={true}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      className="w-full py-3 rounded bg-gray-900 text-white"
+                      onClick={handleContinueClick}
+                      disabled={showNoLocations || isProcessingReturn}
+                    >
+                      Continue
+                    </button>
+                  </div>
+
+                  <button className="mt-4 text-xs text-gray-400 underline" onClick={toggleNoLocations}>
+                    Toggle no locations view
                   </button>
-                </div>
-
-                <button className="mt-4 text-xs text-gray-400 underline" onClick={toggleNoLocations}>
-                  Toggle no locations view
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </Container>
 
       {showAddressForm && (
         <AddressForm initialAddress={address} onSave={handleSaveAddress} onCancel={() => setShowAddressForm(false)} />

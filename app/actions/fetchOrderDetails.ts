@@ -15,6 +15,7 @@ export interface OrderDetailsResponse {
     }
     quantity: number
     total: number
+    canReturn: boolean // Add canReturn field
   }[]
   customer: {
     firstName: string
@@ -32,7 +33,7 @@ export interface OrderDetailsResponse {
   }
 }
 
-// Update the WebstoreOrderResponse interface to match the actual API response structure
+// Update the WebstoreOrderResponse interface to include canReturn
 export interface WebstoreOrderResponse {
   orderId: string
   status: string
@@ -45,6 +46,7 @@ export interface WebstoreOrderResponse {
     quantity: number
     total: number
     productCode: string
+    canReturn: boolean // Add canReturn field
     productDetails: {
       sizeEUR: string
       images: {
@@ -98,7 +100,6 @@ export async function fetchOrderDetails(
       }
     }
 
-    // Update the mapping in the fetchOrderDetails function
     try {
       // Parse the response as the new WebstoreOrderResponse type
       const webstoreData = JSON.parse(rawResponse) as WebstoreOrderResponse
@@ -115,6 +116,7 @@ export async function fetchOrderDetails(
           name: item.name,
           quantity: item.quantity,
           total: item.total,
+          canReturn: item.canReturn !== false, // Default to true if not specified
           productDetails: {
             sizeEUR: item.productDetails?.sizeEUR || "N/A",
             imageUrl: item.productDetails?.images?.[0]?.secureUrl || "",

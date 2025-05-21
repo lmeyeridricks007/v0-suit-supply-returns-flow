@@ -6,7 +6,7 @@ import { Topbar } from "@/components/Topbar"
 import { BackButton } from "@/components/BackButton"
 import { StepIndicator } from "@/components/StepIndicator"
 import { SummaryItem } from "@/components/SummaryItem"
-import { RotateCcw, Truck, MapPin, Info, Loader2, Calendar, AlertCircle, Map, ShoppingBag } from "lucide-react"
+import { RotateCcw, Truck, MapPin, Info, Loader2, Calendar, AlertCircle, Map, ShoppingBag, XCircle } from "lucide-react"
 import { ReturnReasonDropdown } from "@/components/ReturnReasonDropdown"
 import Link from "next/link"
 import { SimpleQuantitySelector } from "@/components/SimpleQuantitySelector"
@@ -541,37 +541,48 @@ export default function ReturnsPage() {
                     </div>
 
                     <div className="px-4 pb-4">
-                      <div className="relative">
-                        <ReturnReasonDropdown
-                          selectedReason={productStates[index]?.selectedReason || ""}
-                          onSelect={(reason) => selectReason(index, reason)}
-                          reasons={returnReasons}
-                        />
-                      </div>
+                      {item.canReturn !== false ? (
+                        // Show return options if the item can be returned
+                        <div className="relative">
+                          <ReturnReasonDropdown
+                            selectedReason={productStates[index]?.selectedReason || ""}
+                            onSelect={(reason) => selectReason(index, reason)}
+                            reasons={returnReasons}
+                          />
 
-                      {productStates[index]?.selectedReason && (
-                        <div className="mt-4">
-                          <div className="flex gap-2">
-                            <button
-                              className={`w-full py-3 border rounded flex items-center justify-center gap-2 ${
-                                productStates[index]?.returnAction === "return"
-                                  ? "bg-gray-100 border-gray-400"
-                                  : "border-gray-200"
-                              }`}
-                              onClick={() => handleReturnClick(index)}
-                            >
-                              <RotateCcw size={16} />
-                              <span>Return</span>
-                            </button>
+                          {productStates[index]?.selectedReason && (
+                            <div className="mt-4">
+                              <div className="flex gap-2">
+                                <button
+                                  className={`w-full py-3 border rounded flex items-center justify-center gap-2 ${
+                                    productStates[index]?.returnAction === "return"
+                                      ? "bg-gray-100 border-gray-400"
+                                      : "border-gray-200"
+                                  }`}
+                                  onClick={() => handleReturnClick(index)}
+                                >
+                                  <RotateCcw size={16} />
+                                  <span>Return</span>
+                                </button>
 
-                            {item.quantity > 1 && productStates[index]?.returnAction === "return" && (
-                              <SimpleQuantitySelector
-                                quantity={productStates[index]?.returnQuantity || 1}
-                                onDecrement={() => handleQuantityChange(index, false)}
-                                onIncrement={() => handleQuantityChange(index, true)}
-                                maxQuantity={item.quantity}
-                              />
-                            )}
+                                {item.quantity > 1 && productStates[index]?.returnAction === "return" && (
+                                  <SimpleQuantitySelector
+                                    quantity={productStates[index]?.returnQuantity || 1}
+                                    onDecrement={() => handleQuantityChange(index, false)}
+                                    onIncrement={() => handleQuantityChange(index, true)}
+                                    maxQuantity={item.quantity}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // Show "Cannot be returned" message if the item cannot be returned
+                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded border border-gray-200">
+                          <div className="flex items-center text-gray-500">
+                            <XCircle size={16} className="mr-2" />
+                            <span>This item cannot be returned</span>
                           </div>
                         </div>
                       )}

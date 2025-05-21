@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, XCircle } from "lucide-react"
 
 interface ReturnProductCardProps {
   name: string
@@ -7,9 +7,10 @@ interface ReturnProductCardProps {
   quantity: number
   size: string
   price: number
+  canReturn?: boolean
 }
 
-export function ReturnProductCard({ name, image, quantity, size, price }: ReturnProductCardProps) {
+export function ReturnProductCard({ name, image, quantity, size, price, canReturn = true }: ReturnProductCardProps) {
   return (
     <div className="mb-4 mx-auto w-full max-w-[600px] border border-gray-200 rounded-md overflow-hidden">
       <div className="p-4">
@@ -39,10 +40,19 @@ export function ReturnProductCard({ name, image, quantity, size, price }: Return
       </div>
 
       <div className="px-4 pb-4">
-        <button className="w-full flex items-center justify-between border border-gray-200 rounded p-3 text-left">
-          <span className="text-gray-700">Reason for return</span>
-          <ChevronDown size={20} className="text-gray-500" />
-        </button>
+        {canReturn ? (
+          <button className="w-full flex items-center justify-between border border-gray-200 rounded p-3 text-left">
+            <span className="text-gray-700">Reason for return</span>
+            <ChevronDown size={20} className="text-gray-500" />
+          </button>
+        ) : (
+          <div className="flex items-center justify-between p-3 bg-gray-100 rounded border border-gray-200">
+            <div className="flex items-center text-gray-500">
+              <XCircle size={16} className="mr-2" />
+              <span>This item cannot be returned</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

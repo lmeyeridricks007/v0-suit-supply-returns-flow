@@ -32,7 +32,7 @@ export interface OrderDetailsResponse {
   }
 }
 
-// New interface to match the webstore API response
+// Update the WebstoreOrderResponse interface to match the actual API response structure
 export interface WebstoreOrderResponse {
   orderId: string
   status: string
@@ -44,10 +44,9 @@ export interface WebstoreOrderResponse {
     name: string
     quantity: number
     total: number
+    productCode: string
     productDetails: {
       sizeEUR: string
-    }
-    productCode: {
       images: {
         secureUrl: string
       }[]
@@ -99,6 +98,7 @@ export async function fetchOrderDetails(
       }
     }
 
+    // Update the mapping in the fetchOrderDetails function
     try {
       // Parse the response as the new WebstoreOrderResponse type
       const webstoreData = JSON.parse(rawResponse) as WebstoreOrderResponse
@@ -117,7 +117,7 @@ export async function fetchOrderDetails(
           total: item.total,
           productDetails: {
             sizeEUR: item.productDetails?.sizeEUR || "N/A",
-            imageUrl: item.productCode?.images?.[0]?.secureUrl || "",
+            imageUrl: item.productDetails?.images?.[0]?.secureUrl || "",
           },
         })),
         customer: webstoreData.customer,

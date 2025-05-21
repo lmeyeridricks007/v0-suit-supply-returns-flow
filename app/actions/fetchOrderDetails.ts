@@ -1,5 +1,7 @@
 "use server"
 
+import { getSizeByCountry } from "@/lib/sizeUtils"
+
 export interface OrderDetailsResponse {
   orderId: string
   status: string
@@ -11,11 +13,15 @@ export interface OrderDetailsResponse {
     name: string
     productDetails: {
       sizeEUR: string
+      sizeUK: string
+      sizeUS: string
+      sizeCN: string
       imageUrl: string
+      displaySize: string // New field for the formatted size display
     }
     quantity: number
     total: number
-    canReturn: boolean // Add canReturn field
+    canReturn: boolean
   }[]
   customer: {
     firstName: string
@@ -33,7 +39,7 @@ export interface OrderDetailsResponse {
   }
 }
 
-// Update the WebstoreOrderResponse interface to include canReturn
+// Update the WebstoreOrderResponse interface to include all size types
 export interface WebstoreOrderResponse {
   orderId: string
   status: string
@@ -46,9 +52,12 @@ export interface WebstoreOrderResponse {
     quantity: number
     total: number
     productCode: string
-    canReturn: boolean // Add canReturn field
+    canReturn: boolean
     productDetails: {
       sizeEUR: string
+      sizeUK: string
+      sizeUS: string
+      sizeCN: string
       images: {
         secureUrl: string
       }[]
@@ -73,6 +82,7 @@ export interface WebstoreOrderResponse {
 export async function fetchOrderDetails(
   orderId: string,
   accountNumber = "SF007353795",
+  countryCode = "ES",
 ): Promise<{
   data: OrderDetailsResponse | null
   error: string | null
@@ -119,7 +129,17 @@ export async function fetchOrderDetails(
           canReturn: item.canReturn !== false, // Default to true if not specified
           productDetails: {
             sizeEUR: item.productDetails?.sizeEUR || "N/A",
+            sizeUK: item.productDetails?.sizeUK || "N/A",
+            sizeUS: item.productDetails?.sizeUS || "N/A",
+            sizeCN: item.productDetails?.sizeCN || "N/A",
             imageUrl: item.productDetails?.images?.[0]?.secureUrl || "",
+            // Format the display size based on country code
+            displaySize: getSizeByCountry(countryCode, {
+              sizeEUR: item.productDetails?.sizeEUR,
+              sizeUK: item.productDetails?.sizeUK,
+              sizeUS: item.productDetails?.sizeUS,
+              sizeCN: item.productDetails?.sizeCN,
+            }),
           },
         })),
         customer: webstoreData.customer,

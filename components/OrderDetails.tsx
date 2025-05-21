@@ -7,9 +7,14 @@ import { Loader2 } from "lucide-react"
 interface OrderDetailsProps {
   initialOrderId?: string
   initialAccountNumber?: string
+  countryCode?: string
 }
 
-export function OrderDetails({ initialOrderId = "KLNL_8", initialAccountNumber = "SF007353795" }: OrderDetailsProps) {
+export function OrderDetails({
+  initialOrderId = "KLNL_8",
+  initialAccountNumber = "SF007353795",
+  countryCode = "ES",
+}: OrderDetailsProps) {
   const [orderId, setOrderId] = useState(initialOrderId)
   const [accountNumber, setAccountNumber] = useState(initialAccountNumber)
   const [orderDetails, setOrderDetails] = useState<OrderDetailsResponse | null>(null)
@@ -20,7 +25,7 @@ export function OrderDetails({ initialOrderId = "KLNL_8", initialAccountNumber =
   useEffect(() => {
     async function getOrderDetails() {
       setLoading(true)
-      const { data, error, rawResponse } = await fetchOrderDetails(orderId, accountNumber)
+      const { data, error, rawResponse } = await fetchOrderDetails(orderId, accountNumber, countryCode)
       setOrderDetails(data)
       setError(error)
       setRawResponse(rawResponse)
@@ -28,7 +33,7 @@ export function OrderDetails({ initialOrderId = "KLNL_8", initialAccountNumber =
     }
 
     getOrderDetails()
-  }, [orderId, accountNumber])
+  }, [orderId, accountNumber, countryCode])
 
   const formatDate = (dateString: string) => {
     try {
@@ -109,7 +114,7 @@ export function OrderDetails({ initialOrderId = "KLNL_8", initialAccountNumber =
                   <h4 className="font-medium">{item.name}</h4>
                   <div className="flex text-sm text-gray-600 mt-1">
                     <p className="mr-4">Qty. {item.quantity}</p>
-                    <p>Size {item.productDetails?.sizeEUR || "N/A"}</p>
+                    <p>Size {item.productDetails?.displaySize || "N/A"}</p>
                   </div>
                 </div>
                 <div className="text-right">

@@ -19,6 +19,8 @@ import { fetchOrderDetails, type OrderDetailsResponse } from "@/app/actions/fetc
 import { fetchReboundData, type ReboundApiResponse } from "@/app/actions/fetchReboundData"
 import { fetchDropOffLocations, type DropOffLocationsResponse } from "@/app/actions/fetchDropOffLocations"
 import { DropOffLocationsMap } from "@/components/DropOffLocationsMap"
+import { createReturn, type CreateReturnRequest } from "@/app/actions/createReturn"
+import { ReturnProcessingScreen } from "@/components/ReturnProcessingScreen"
 
 const returnReasons = [
   "I've changed my mind",
@@ -80,6 +82,7 @@ export default function ReturnsPage() {
   const [error, setError] = useState<string | null>(null)
   const [rawResponse, setRawResponse] = useState<string>("")
   const [orderNotFound, setOrderNotFound] = useState(false)
+  const [isProcessingReturn, setIsProcessingReturn] = useState(false)
 
   const [productStates, setProductStates] = useState<
     {
@@ -136,7 +139,7 @@ export default function ReturnsPage() {
     async function getOrderDetails() {
       setLoading(true)
       setOrderNotFound(false)
-      const { data, error, rawResponse } = await fetchOrderDetails(orderId, accountNumber)
+      const { data, error, rawResponse } = await fetchOrderDetails(orderId, accountNumber, countryCode)
       setOrderDetails(data)
       setError(error)
       setRawResponse(rawResponse)
@@ -159,7 +162,7 @@ export default function ReturnsPage() {
     }
 
     getOrderDetails()
-  }, [orderId, accountNumber])
+  }, [orderId, accountNumber, countryCode])
 
   useEffect(() => {
     async function fetchReboundOptions() {
@@ -283,13 +286,66 @@ export default function ReturnsPage() {
     )
   }
 
-  const handleContinueClick = () => {
+  const handleContinueClick = async () => {
     if (currentStep === 1 && isAnyProductSelected) {
       setCurrentStep(2)
       window.scrollTo(0, 0)
     } else if (currentStep === 2) {
-      localStorage.setItem("returnedItems", JSON.stringify(returnedItems))
-      router.push(`/returns/confirmation?OrderID=${orderId}&countryCode=${countryCode}&accountNumber=${accountNumber}`)
+      // Create return request
+      setIsProcessingReturn(true)
+
+      try {
+        // Prepare return items
+        const returnItems = returnedItems.map((item, index) => {
+          const stateIndex = orderDetails?.orderItems?.findIndex((orderItem) => orderItem === item) || 0
+          return {
+            orderLineId: index.toString(),
+            itemId: item.productDetails?.imageUrl?.split("/").pop() || `item-${index}`,
+            quantity: productStates[stateIndex]?.returnQuantity || 1,
+            returnReason: productStates[stateIndex]?.selectedReason || "",
+          }
+        })
+
+        // Create return request
+        const request: CreateReturnRequest = {
+          orderId,
+          accountNumber,
+          countryCode,
+          returnItems,
+          returnMethod: returnMethod || "pickup",
+        }
+
+        // Add pickup address or dropoff location if applicable
+        if (returnMethod === "pickup") {
+          request.pickupAddress = {
+            firstName: address.firstName,
+            lastName: address.lastName,
+            address: address.address,
+            city: address.city,
+            postalCode: address.postalCode,
+            country: address.country,
+          }
+        } else if (returnMethod === "dropoff" && selectedDropoffId) {
+          request.dropOffLocationId = selectedDropoffId
+        }
+
+        // Call the API
+        const response = await createReturn(request)
+
+        // Store return data in localStorage
+        localStorage.setItem("returnedItems", JSON.stringify(returnedItems))
+        localStorage.setItem("returnResponse", JSON.stringify(response))
+
+        // Redirect to confirmation page
+        router.push(
+          `/returns/confirmation?OrderID=${orderId}&countryCode=${countryCode}&accountNumber=${accountNumber}`,
+        )
+      } catch (error) {
+        console.error("Error creating return:", error)
+        setIsProcessingReturn(false)
+        // Show error message
+        alert("There was an error processing your return. Please try again.")
+      }
     }
   }
 
@@ -465,6 +521,8 @@ export default function ReturnsPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      {isProcessingReturn && <ReturnProcessingScreen />}
+
       <Topbar />
       <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
 
@@ -527,7 +585,7 @@ export default function ReturnsPage() {
                             <h3 className="text-base font-medium">{item.name}</h3>
                             <div className="text-sm text-gray-600 mt-4">
                               <p>Qty. {item.quantity}</p>
-                              <p>Size {item.productDetails?.sizeEUR || "N/A"}</p>
+                              <p>Size {item.productDetails?.displaySize || "N/A"}</p>
                             </div>
                           </div>
                           <div className="text-right">
@@ -542,7 +600,6 @@ export default function ReturnsPage() {
 
                     <div className="px-4 pb-4">
                       {item.canReturn !== false ? (
-                        // Show return options if the item can be returned
                         <div className="relative">
                           <ReturnReasonDropdown
                             selectedReason={productStates[index]?.selectedReason || ""}
@@ -578,7 +635,6 @@ export default function ReturnsPage() {
                           )}
                         </div>
                       ) : (
-                        // Show "Cannot be returned" message if the item cannot be returned
                         <div className="flex items-center justify-between p-3 bg-gray-100 rounded border border-gray-200">
                           <div className="flex items-center text-gray-500">
                             <XCircle size={16} className="mr-2" />
@@ -724,7 +780,11 @@ export default function ReturnsPage() {
                 </div>
 
                 <div className="mt-4">
-                  <button className="w-full py-3 rounded bg-gray-900 text-white" onClick={handleContinueClick}>
+                  <button
+                    className="w-full py-3 rounded bg-gray-900 text-white"
+                    onClick={handleContinueClick}
+                    disabled={isProcessingReturn}
+                  >
                     Continue
                   </button>
                 </div>
@@ -858,7 +918,7 @@ export default function ReturnsPage() {
                   <button
                     className="w-full py-3 rounded bg-gray-900 text-white"
                     onClick={handleContinueClick}
-                    disabled={showNoLocations}
+                    disabled={showNoLocations || isProcessingReturn}
                   >
                     Continue
                   </button>

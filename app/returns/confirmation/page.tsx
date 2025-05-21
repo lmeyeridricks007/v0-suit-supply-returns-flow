@@ -6,6 +6,7 @@ import { Topbar } from "@/components/Topbar"
 import { BackButton } from "@/components/BackButton"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
+import type { CreateReturnResponse } from "@/app/actions/createReturn"
 
 interface ReturnedItem {
   id?: number
@@ -14,6 +15,10 @@ interface ReturnedItem {
   productDetails?: {
     imageUrl?: string
     sizeEUR?: string
+    sizeUK?: string
+    sizeUS?: string
+    sizeCN?: string
+    displaySize?: string
   }
   quantity: number
   returnQuantity: number
@@ -31,6 +36,7 @@ export default function ReturnConfirmationPage() {
 
   const [showLabel, setShowLabel] = useState(false)
   const [returnedItems, setReturnedItems] = useState<ReturnedItem[]>([])
+  const [returnResponse, setReturnResponse] = useState<CreateReturnResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   const labelUrl =
@@ -39,6 +45,8 @@ export default function ReturnConfirmationPage() {
   useEffect(() => {
     // Get returned items from localStorage
     const storedItems = localStorage.getItem("returnedItems")
+    const storedResponse = localStorage.getItem("returnResponse")
+
     if (storedItems) {
       try {
         const parsedItems = JSON.parse(storedItems)
@@ -47,6 +55,16 @@ export default function ReturnConfirmationPage() {
         console.error("Failed to parse returned items:", error)
       }
     }
+
+    if (storedResponse) {
+      try {
+        const parsedResponse = JSON.parse(storedResponse)
+        setReturnResponse(parsedResponse)
+      } catch (error) {
+        console.error("Failed to parse return response:", error)
+      }
+    }
+
     setLoading(false)
   }, [])
 
@@ -107,7 +125,10 @@ export default function ReturnConfirmationPage() {
       )}
 
       <div className="px-4 pb-6">
-        <h2 className="text-lg font-medium mb-4">Items to Return</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium">Items to Return</h2>
+          {returnResponse && <div className="text-sm text-gray-600">Return #{returnResponse.data.OrderId}</div>}
+        </div>
 
         {loading ? (
           <div className="flex justify-center items-center p-8">
@@ -155,7 +176,13 @@ export default function ReturnConfirmationPage() {
                       <p>
                         Qty. {product.returnQuantity} of {product.quantity}
                       </p>
-                      <p>Size {product.productDetails?.sizeEUR || product.size || "N/A"}</p>
+                      <p>
+                        Size{" "}
+                        {product.productDetails?.displaySize ||
+                          product.productDetails?.sizeEUR ||
+                          product.size ||
+                          "N/A"}
+                      </p>
                     </div>
                   </div>
                   <div className="p-4 text-right">

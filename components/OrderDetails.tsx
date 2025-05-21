@@ -6,10 +6,12 @@ import { Loader2 } from "lucide-react"
 
 interface OrderDetailsProps {
   initialOrderId?: string
+  initialAccountNumber?: string
 }
 
-export function OrderDetails({ initialOrderId = "KLNL_8" }: OrderDetailsProps) {
+export function OrderDetails({ initialOrderId = "KLNL_8", initialAccountNumber = "SF007353795" }: OrderDetailsProps) {
   const [orderId, setOrderId] = useState(initialOrderId)
+  const [accountNumber, setAccountNumber] = useState(initialAccountNumber)
   const [orderDetails, setOrderDetails] = useState<OrderDetailsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -18,7 +20,7 @@ export function OrderDetails({ initialOrderId = "KLNL_8" }: OrderDetailsProps) {
   useEffect(() => {
     async function getOrderDetails() {
       setLoading(true)
-      const { data, error, rawResponse } = await fetchOrderDetails(orderId)
+      const { data, error, rawResponse } = await fetchOrderDetails(orderId, accountNumber)
       setOrderDetails(data)
       setError(error)
       setRawResponse(rawResponse)
@@ -26,7 +28,7 @@ export function OrderDetails({ initialOrderId = "KLNL_8" }: OrderDetailsProps) {
     }
 
     getOrderDetails()
-  }, [orderId])
+  }, [orderId, accountNumber])
 
   const formatDate = (dateString: string) => {
     try {
@@ -127,7 +129,7 @@ export function OrderDetails({ initialOrderId = "KLNL_8" }: OrderDetailsProps) {
         <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
           <h4 className="text-sm font-medium mb-2">Request:</h4>
           <pre className="bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-            {`curl -X GET "https://orderhistory-tst-af.azurewebsites.net/api/internal/crm/orders/${orderId}?code=TZfbwt8pmhjKXc9Oh94u1IHP5qCgOQPl7CZ0Xr7xSFzGq%2F%2FVLhG9KS%3D%3D" -H "accept: json/application"`}
+            {`curl -X GET "https://orderhistory-tst-af.azurewebsites.net/api/internal/webstore/orders/${orderId}?accountNumber=${accountNumber}&code=TZfbwt8pmhjKXc9Oh94u1IHP5qCgOQPl7CZ0Xr7xSFzGq%2F%2FVLhG9KS%3D%3D" -H "accept: json/application"`}
           </pre>
         </div>
 

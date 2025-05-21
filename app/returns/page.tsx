@@ -8,7 +8,6 @@ import { StepIndicator } from "@/components/StepIndicator"
 import { SummaryItem } from "@/components/SummaryItem"
 import { RotateCcw, Truck, MapPin, Info, Loader2, Calendar, AlertCircle, Map, ShoppingBag } from "lucide-react"
 import { ReturnReasonDropdown } from "@/components/ReturnReasonDropdown"
-// Add this import at the top with the other imports
 import Link from "next/link"
 import { SimpleQuantitySelector } from "@/components/SimpleQuantitySelector"
 import { ReturnMethodOption } from "@/components/ReturnMethodOption"
@@ -30,7 +29,6 @@ const returnReasons = [
   "Wrong item received",
 ]
 
-// Calculate next day for collection
 const getNextDayDate = (): string => {
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -45,7 +43,6 @@ const getNextDayDate = (): string => {
 type ReturnAction = "none" | "return"
 type ReturnMethod = "pickup" | "dropoff" | null
 
-// Function to calculate distance between two coordinates in meters
 const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R = 6371000 // Radius of the earth in meters
   const dLat = deg2rad(lat2 - lat1)
@@ -62,7 +59,6 @@ const deg2rad = (deg: number): number => {
   return deg * (Math.PI / 180)
 }
 
-// Function to format distance in a user-friendly way
 const formatDistance = (meters: number): string => {
   if (meters < 1000) {
     return `${meters} m`
@@ -76,6 +72,7 @@ export default function ReturnsPage() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get("OrderID") || "KLNL_8" // Get OrderID from query string
   const countryCode = searchParams.get("countryCode") || "ES" // Get countryCode from query string
+  const accountNumber = searchParams.get("accountNumber") || "SF007353795"
 
   const [currentStep, setCurrentStep] = useState(1)
   const [orderDetails, setOrderDetails] = useState<OrderDetailsResponse | null>(null)
@@ -123,9 +120,7 @@ export default function ReturnsPage() {
 
   const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null)
 
-  // Debounce search query
   useEffect(() => {
-    // Only proceed if the query is at least 4 characters
     if (dropoffSearchQuery.length < 4) return
 
     const handler = setTimeout(() => {
@@ -137,22 +132,19 @@ export default function ReturnsPage() {
     }
   }, [dropoffSearchQuery])
 
-  // Fetch order details when the component mounts or orderId changes
   useEffect(() => {
     async function getOrderDetails() {
       setLoading(true)
       setOrderNotFound(false)
-      const { data, error, rawResponse } = await fetchOrderDetails(orderId)
+      const { data, error, rawResponse } = await fetchOrderDetails(orderId, accountNumber)
       setOrderDetails(data)
       setError(error)
       setRawResponse(rawResponse)
 
-      // Check if order was not found
       if (!data || error) {
         setOrderNotFound(true)
       }
 
-      // Initialize product states based on order items
       if (data && data.orderItems) {
         setProductStates(
           data.orderItems.map(() => ({
@@ -167,9 +159,8 @@ export default function ReturnsPage() {
     }
 
     getOrderDetails()
-  }, [orderId])
+  }, [orderId, accountNumber])
 
-  // Add useEffect hooks to fetch data from the Rebound APIs
   useEffect(() => {
     async function fetchReboundOptions() {
       setReboundLoading(true)
@@ -179,7 +170,6 @@ export default function ReturnsPage() {
       setReboundError(error)
       setReboundLoading(false)
 
-      // If we have data, check for pickup option and set it as default
       if (data && data.content && data.content.length > 0) {
         const hasPickup = data.content.some((option) => option.type === "PICK_UP")
         if (hasPickup) {
@@ -193,15 +183,14 @@ export default function ReturnsPage() {
     fetchReboundOptions()
   }, [countryCode])
 
-  // Fetch drop-off locations when return method changes to dropoff or when search query changes
   const fetchDropOffPoints = useCallback(async () => {
     if (returnMethod !== "dropoff" || debouncedSearchQuery.length < 4) return
 
     setDropOffLocationsLoading(true)
     const { data, error } = await fetchDropOffLocations(
       {
-        postalCode: debouncedSearchQuery, // Use the debounced search query
-        countryCode: countryCode, // Use the countryCode from query string
+        postalCode: debouncedSearchQuery,
+        countryCode: countryCode,
         searchRadius: 1,
         referenceId: "1019",
       },
@@ -211,18 +200,15 @@ export default function ReturnsPage() {
     setDropOffLocationsError(error)
     setDropOffLocationsLoading(false)
 
-    // Set the first location as selected by default
     if (data && data.dropOffPointList && data.dropOffPointList.length > 0) {
-      setSelectedDropoffId("0") // Use index as ID
+      setSelectedDropoffId("0")
     }
   }, [returnMethod, debouncedSearchQuery, countryCode])
 
-  // Fetch drop-off locations when return method changes to dropoff or when debounced search query changes
   useEffect(() => {
     fetchDropOffPoints()
   }, [fetchDropOffPoints])
 
-  // Calculate total refund amount
   const refundAmount = productStates.reduce((total, state, index) => {
     if (state.returnAction === "return" && orderDetails?.orderItems?.[index]) {
       return (
@@ -232,10 +218,8 @@ export default function ReturnsPage() {
     return total
   }, 0)
 
-  // Check if any product is selected for return
   const isAnyProductSelected = productStates.some((state) => state.returnAction !== "none")
 
-  // Get the items that are marked for return
   const returnedItems = useMemo(() => {
     if (!orderDetails?.orderItems) return []
 
@@ -251,7 +235,6 @@ export default function ReturnsPage() {
       })
   }, [orderDetails, productStates])
 
-  // Add/remove modal-open class to body when modal is shown/hidden
   useEffect(() => {
     if (showAddressForm || showDropoffSelection) {
       document.body.classList.add("modal-open")
@@ -259,7 +242,6 @@ export default function ReturnsPage() {
       document.body.classList.remove("modal-open")
     }
 
-    // Cleanup on unmount
     return () => {
       document.body.classList.remove("modal-open")
     }
@@ -306,11 +288,8 @@ export default function ReturnsPage() {
       setCurrentStep(2)
       window.scrollTo(0, 0)
     } else if (currentStep === 2) {
-      // Store returned items in localStorage to access them on the confirmation page
       localStorage.setItem("returnedItems", JSON.stringify(returnedItems))
-
-      // Navigate to confirmation page with query parameters
-      router.push(`/returns/confirmation?OrderID=${orderId}&countryCode=${countryCode}`)
+      router.push(`/returns/confirmation?OrderID=${orderId}&countryCode=${countryCode}&accountNumber=${accountNumber}`)
     }
   }
 
@@ -323,13 +302,11 @@ export default function ReturnsPage() {
     setShowAddressForm(false)
   }
 
-  // Update the handleSelectDropoff function to work with the new data structure
   const handleSelectDropoff = (locationId: string) => {
     setSelectedDropoffId(locationId)
     setShowDropoffSelection(false)
   }
 
-  // Toggle map visibility
   const toggleMap = () => {
     setShowMap(!showMap)
   }
@@ -339,7 +316,6 @@ export default function ReturnsPage() {
   }
 
   const getFormattedAddress = () => {
-    // Use shipping address from order details if available
     if (orderDetails?.shippingAddress) {
       const { firstName, lastName, addressLine1, addressLine2, city, country, postalCode } =
         orderDetails.shippingAddress
@@ -351,7 +327,6 @@ export default function ReturnsPage() {
       }
     }
 
-    // Fallback to default address
     return {
       name: `${address.firstName} ${address.lastName}`,
       address1: address.address,
@@ -360,7 +335,6 @@ export default function ReturnsPage() {
     }
   }
 
-  // Update the formatDate function to handle ISO date strings
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
@@ -374,14 +348,13 @@ export default function ReturnsPage() {
     }
   }
 
-  // Get address for Rebound API
   const getReboundAddress = () => {
     if (orderDetails?.shippingAddress) {
       return {
         streetAddress: orderDetails.shippingAddress.addressLine1,
         city: orderDetails.shippingAddress.city,
         postalCode: orderDetails.shippingAddress.postalCode,
-        countryCode: countryCode, // Use the countryCode from query string
+        countryCode: countryCode,
       }
     }
 
@@ -389,23 +362,20 @@ export default function ReturnsPage() {
       streetAddress: address.address,
       city: address.city,
       postalCode: address.postalCode,
-      countryCode: countryCode, // Use the countryCode from query string
+      countryCode: countryCode,
     }
   }
 
-  // Check if pickup option is available
   const hasPickupOption = useMemo(() => {
     if (!reboundData || !reboundData.content) return false
     return reboundData.content.some((option) => option.type === "PICK_UP")
   }, [reboundData])
 
-  // Check if dropoff option is available
   const hasDropoffOption = useMemo(() => {
     if (!reboundData || !reboundData.content) return false
     return reboundData.content.some((option) => option.type === "DROP_OFF")
   }, [reboundData])
 
-  // Get the selected dropoff location details
   const selectedDropoffLocation = useMemo(() => {
     if (!dropOffLocationsData || !dropOffLocationsData.dropOffPointList || !selectedDropoffId) return null
     return (
@@ -413,13 +383,11 @@ export default function ReturnsPage() {
     )
   }, [dropOffLocationsData, selectedDropoffId])
 
-  // Get all drop-off locations for display
   const allDropOffLocations = useMemo(() => {
     if (!dropOffLocationsData || !dropOffLocationsData.dropOffPointList) return []
     return dropOffLocationsData.dropOffPointList
   }, [dropOffLocationsData])
 
-  // Calculate distances for each location
   const locationsWithDistances = useMemo(() => {
     if (!dropOffLocationsData?.customerStreetGeoLocation || !allDropOffLocations.length) return []
 
@@ -441,11 +409,9 @@ export default function ReturnsPage() {
     })
   }, [allDropOffLocations, dropOffLocationsData])
 
-  // Get the delivery cost from the Rebound API response
   const getDeliveryCost = () => {
     if (!reboundData || !reboundData.content) return "Free"
 
-    // Find the selected return method
     const selectedMethod = reboundData.content.find((option) => {
       if (returnMethod === "pickup") return option.type === "PICK_UP"
       if (returnMethod === "dropoff") return option.type === "DROP_OFF"
@@ -454,7 +420,6 @@ export default function ReturnsPage() {
 
     if (!selectedMethod) return "Free"
 
-    // Return the price amount
     if (selectedMethod.price.amount === 0) return "Free"
     return `${selectedMethod.price.amount} ${selectedMethod.price.currency || "EUR"}`
   }
@@ -463,24 +428,21 @@ export default function ReturnsPage() {
     setSelectedDropoffId(locationId)
     setFocusedLocationId(locationId)
 
-    // Scroll the selected location into view in the list
     const locationElement = document.getElementById(`location-${locationId}`)
     if (locationElement) {
       locationElement.scrollIntoView({ behavior: "smooth", block: "center" })
     }
   }
 
-  // Handle map marker click
   const handleMapLocationSelected = (locationId: string) => {
     handleLocationSelect(locationId)
   }
 
-  // Render order not found message
   if (orderNotFound && !loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
         <Topbar />
-        <BackButton href={`/orders?countryCode=${countryCode}`} label="Orders" />
+        <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
 
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
           <div className="bg-gray-100 rounded-full p-6 mb-6">
@@ -490,7 +452,10 @@ export default function ReturnsPage() {
           <p className="text-gray-600 text-center mb-8">
             We couldn't find the order you're looking for. The order may have been removed or the ID might be incorrect.
           </p>
-          <Link href={`/orders?countryCode=${countryCode}`} className="px-6 py-3 bg-gray-900 text-white rounded-md">
+          <Link
+            href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`}
+            className="px-6 py-3 bg-gray-900 text-white rounded-md"
+          >
             Return to Orders
           </Link>
         </div>
@@ -501,7 +466,7 @@ export default function ReturnsPage() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Topbar />
-      <BackButton href={`/orders?countryCode=${countryCode}`} label="Orders" />
+      <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
 
       <div className="px-4 py-8 text-center">
         <h1 className="text-2xl font-medium mb-2">Return products</h1>
@@ -514,7 +479,6 @@ export default function ReturnsPage() {
       </div>
 
       <div className="flex-grow flex flex-col">
-        {/* Step 1: Select items */}
         <div className="border-t border-gray-200">
           <div className="flex justify-between items-center">
             <StepIndicator number={1} isActive={currentStep === 1}>
@@ -600,7 +564,6 @@ export default function ReturnsPage() {
                               <span>Return</span>
                             </button>
 
-                            {/* Show quantity selector if product quantity > 1 and return is selected */}
                             {item.quantity > 1 && productStates[index]?.returnAction === "return" && (
                               <SimpleQuantitySelector
                                 quantity={productStates[index]?.returnQuantity || 1}
@@ -653,7 +616,6 @@ export default function ReturnsPage() {
           </div>
         )}
 
-        {/* Step 2: Choose return method */}
         <div className="border-t border-gray-200">
           <StepIndicator number={2} isActive={currentStep === 2}>
             Choose a return method
@@ -678,7 +640,6 @@ export default function ReturnsPage() {
               </div>
             ) : (
               <>
-                {/* Pickup option - show only if available */}
                 {hasPickupOption && (
                   <ReturnMethodOption
                     icon={<Truck size={24} />}
@@ -689,7 +650,6 @@ export default function ReturnsPage() {
                   />
                 )}
 
-                {/* Dropoff option - show only if available */}
                 {hasDropoffOption && (
                   <ReturnMethodOption
                     icon={<MapPin size={24} />}
@@ -727,7 +687,6 @@ export default function ReturnsPage() {
 
                 <h3 className="font-medium mb-4 mt-6">Pick up time</h3>
 
-                {/* Static next day pickup time */}
                 <div className="border border-gray-200 rounded-md p-4 mb-4">
                   <div className="flex items-start">
                     <Calendar size={20} className="mr-3 text-gray-600 mt-1 flex-shrink-0" />
@@ -811,7 +770,6 @@ export default function ReturnsPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Map component - show all locations with reduced height */}
                     {showMap && dropOffLocationsData && dropOffLocationsData.customerStreetGeoLocation && (
                       <div className="mb-6">
                         <DropOffLocationsMap
@@ -834,11 +792,9 @@ export default function ReturnsPage() {
                       </div>
                     )}
 
-                    {/* Scrollable drop-off locations list */}
                     <div className="border border-gray-200 rounded-md mb-6 overflow-hidden">
                       <div className="max-h-[400px] overflow-y-auto">
                         {locationsWithDistances.map((location, index) => {
-                          // Format the address for display
                           const addressParts = location.address.split(" ")
                           const city = addressParts[0] || ""
                           const postalCode = addressParts[1] || ""
@@ -897,7 +853,6 @@ export default function ReturnsPage() {
                   </button>
                 </div>
 
-                {/* For testing purposes */}
                 <button className="mt-4 text-xs text-gray-400 underline" onClick={toggleNoLocations}>
                   Toggle no locations view
                 </button>
@@ -914,7 +869,6 @@ export default function ReturnsPage() {
       {showDropoffSelection && dropOffLocationsData && (
         <DropoffLocationSelectionModal
           locations={locationsWithDistances.map((location, index) => {
-            // Format the address for display
             const addressParts = location.address.split(" ")
             const city = addressParts[0] || ""
             const postalCode = addressParts[1] || ""

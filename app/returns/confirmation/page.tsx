@@ -27,6 +27,7 @@ export default function ReturnConfirmationPage() {
   const searchParams = useSearchParams()
   const orderId = searchParams.get("OrderID") || "KLNL_8"
   const countryCode = searchParams.get("countryCode") || "ES"
+  const accountNumber = searchParams.get("accountNumber") || "SF007353795"
 
   const [showLabel, setShowLabel] = useState(false)
   const [returnedItems, setReturnedItems] = useState<ReturnedItem[]>([])
@@ -57,7 +58,7 @@ export default function ReturnConfirmationPage() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Topbar />
-      <BackButton href={`/orders?countryCode=${countryCode}`} label="Orders" />
+      <BackButton href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`} label="Orders" />
 
       <div className="px-4 py-8 text-center">
         <h1 className="text-2xl font-medium mb-4">Return registered</h1>
@@ -175,7 +176,7 @@ export default function ReturnConfirmationPage() {
 
       <div className="px-4 mt-auto mb-8">
         <Link
-          href={`/orders?countryCode=${countryCode}`}
+          href={`/orders?countryCode=${countryCode}&accountNumber=${accountNumber}`}
           className="block w-full py-3 bg-gray-900 text-white text-center rounded-md"
         >
           Back to orders

@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation"
 export default function OrdersPage() {
   const searchParams = useSearchParams()
   const countryCode = searchParams.get("countryCode") || "ES"
+  const accountNumber = searchParams.get("accountNumber") || "SF007353795"
 
   // Use KLNL_8 as the OrderID
   const orderId = "KLNL_8"
@@ -23,7 +24,7 @@ export default function OrdersPage() {
           <p className="text-sm text-gray-600 mb-2">May 15, 2023</p>
           <p className="text-sm mb-4">2 items - €417</p>
           <Link
-            href={`/returns?OrderID=${orderId}&countryCode=${countryCode}`}
+            href={`/returns?OrderID=${orderId}&countryCode=${countryCode}&accountNumber=${accountNumber}`}
             className="text-sm font-medium underline"
           >
             Return or exchange items
